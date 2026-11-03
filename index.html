@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ApexFlow Markets - Pro</title>
+    <title>Apexflow market dollar hunters</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -34,9 +34,10 @@
             border-bottom: 1px solid #334155;
         }
         h1 {
-            font-size: 1.15rem;
+            font-size: 1.05rem;
             margin: 0;
             color: var(--accent-color);
+            font-weight: 700;
         }
         .container {
             padding: 1rem;
@@ -135,7 +136,7 @@
 <body>
 
     <header>
-        <h1>ApexFlow Markets</h1>
+        <h1>Apexflow market dollar hunters</h1>
         <div style="display: flex; align-items: center; gap: 10px;">
             <div>
                 <span id="status-dot" class="status"></span>
@@ -158,15 +159,15 @@
         <div class="card">
             <label style="font-size: 0.85rem; color: var(--text-secondary);">Select Market Category:</label>
             <select id="market-category" onchange="filterMarkets()">
-                <option value="synthetics">Synthetic Indices (Volatility, Boom/Crash)</option>
+                <option value="synthetic_index">Synthetic Indices (Volatility, Boom/Crash)</option>
                 <option value="forex">Forex Pairs</option>
-                <option value="cryptocurrencies">Cryptocurrencies</option>
+                <option value="cryptocurrency">Cryptocurrencies</option>
                 <option value="commodities">Commodities</option>
             </select>
 
             <label style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.75rem; display: block;">Select Asset / Symbol:</label>
             <select id="symbol-select" onchange="changeSymbol()">
-                <option value="R_100">Loading symbols...</option>
+                <option value="R_100">Volatility 100 Index</option>
             </select>
             
             <div style="margin-top: 1rem;">
@@ -208,7 +209,7 @@
                 <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
                 <option value="8">8</option><option value="9">9</option>
             </select>
-            <button class="action-btn" onclick="alert('Executing Digit Trade...')">Place Digit Trade</button>
+            <button class="action-btn" onclick="executeTrade('DIGIT')">Place Digit Trade</button>
         </div>
 
         <!-- Panel 3: Accumulators -->
@@ -222,16 +223,18 @@
                 <option value="4">4% Growth Rate</option>
                 <option value="5">5% Growth Rate</option>
             </select>
-            <button class="action-btn" onclick="alert('Starting Accumulator Contract...')">Start Accumulator</button>
+            <button class="action-btn" onclick="executeTrade('ACCUMULATOR')">Start Accumulator</button>
         </div>
     </div>
 
     <script>
-        const appId = '34R7jUTFmEVdRwZeJfyNo';
-        let ws;
+        const appId = '34RcdHkJItRtYpPgolA8T'; 
+        let ws = null;
         let allSymbolsData = [];
         let currentSymbol = 'R_100';
+        let currentSubscriptionId = null;
         let authToken = null;
+        let reconnectInterval = null;
 
         function connectDeriv() {
             const statusDot = document.getElementById('status-dot');
@@ -240,72 +243,95 @@
             statusText.innerText = 'Connecting...';
             statusDot.classList.remove('connected');
 
-            ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}`);
+            // Stable production WebSocket connection string
+            ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}&l=EN&brand=deriv`);
 
             ws.onopen = function() {
                 statusDot.classList.add('connected');
                 statusText.innerText = 'Connected Live';
                 statusText.style.color = '#22c55e';
                 
-                // Check if returning from OAuth login
-                checkOAuthToken();
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                }
 
-                // Fetch active symbol assets
+                checkOAuthToken();
                 ws.send(JSON.stringify({ active_symbols: "brief", product_type: "basic" }));
+                subscribeTicks(currentSymbol);
             };
 
             ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
+                try {
+                    const data = JSON.parse(event.data);
 
-                // Receive login authorization response
-                if (data.msg_type === 'authorize') {
-                    if (data.error) {
-                        alert('Authorization failed: ' + data.error.message);
-                    } else {
-                        document.getElementById('login-btn').innerText = 'Logged In';
-                        document.getElementById('account-card').style.display = 'block';
-                        document.getElementById('user-balance').innerText = `${data.authorize.currency} ${data.authorize.balance}`;
-                        // Subscribe to live balance updates
-                        ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+                    if (data.msg_type === 'authorize') {
+                        if (data.error) {
+                            console.warn(data.error.message);
+                        } else {
+                            document.getElementById('login-btn').innerText = 'Logged In';
+                            document.getElementById('account-card').style.display = 'block';
+                            document.getElementById('user-balance').innerText = `${data.authorize.currency} ${data.authorize.balance}`;
+                            ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+                        }
                     }
-                }
 
-                // Balance update stream
-                if (data.msg_type === 'balance') {
-                    document.getElementById('user-balance').innerText = `${data.balance.currency} ${data.balance.balance}`;
-                }
+                    if (data.msg_type === 'balance' && data.balance) {
+                        document.getElementById('user-balance').innerText = `${data.balance.currency} ${data.balance.balance}`;
+                    }
 
-                // Symbols list response
-                if (data.active_symbols) {
-                    allSymbolsData = data.active_symbols;
-                    filterMarkets(); 
-                }
+                    if (data.msg_type === 'active_symbols' && data.active_symbols) {
+                        allSymbolsData = data.active_symbols;
+                        filterMarkets(); 
+                    }
 
-                // Ticks price updates
-                if (data.tick) {
-                    document.getElementById('price').innerText = data.tick.quote.toFixed(2);
+                    if (data.msg_type === 'tick' && data.tick) {
+                        if (data.tick.subscription) {
+                            currentSubscriptionId = data.tick.subscription.id;
+                        }
+                        const quote = Number(data.tick.quote);
+                        document.getElementById('price').innerText = isNaN(quote) ? '--.----' : quote.toFixed(2);
+                    }
+                } catch (err) {
+                    console.error("Parsing error:", err);
                 }
             };
 
             ws.onclose = function() {
                 statusDot.classList.remove('connected');
                 statusText.innerText = 'Disconnected';
-                setTimeout(connectDeriv, 3000);
+                statusText.style.color = '#ef4444';
+
+                if (!reconnectInterval) {
+                    reconnectInterval = setInterval(function() {
+                        connectDeriv();
+                    }, 4000);
+                }
+            };
+
+            ws.onerror = function(err) {
+                console.error("Socket error:", err);
             };
         }
 
+        function subscribeTicks(symbol) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                if (currentSubscriptionId) {
+                    ws.send(JSON.stringify({ forget: currentSubscriptionId }));
+                    currentSubscriptionId = null;
+                }
+                ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+            }
+        }
+
         function loginDeriv() {
-            // Redirect user to official Deriv OAuth endpoint
             window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}`;
         }
 
         function checkOAuthToken() {
-            // Extract token1 parameter from URL callback
             const urlParams = new URLSearchParams(window.location.search);
             authToken = urlParams.get('token1');
-
-            if (authToken) {
-                // Authorize user via WebSocket connection
+            if (authToken && ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ authorize: authToken }));
             }
         }
@@ -315,7 +341,7 @@
                 alert('Please log in with your Deriv account first to execute trades.');
                 return;
             }
-            alert(`Placing ${tradeType} trade request...`);
+            alert(`Placing ${tradeType} trade request on ${currentSymbol}...`);
         }
 
         function filterMarkets() {
@@ -323,16 +349,7 @@
             const symbolSelect = document.getElementById('symbol-select');
             symbolSelect.innerHTML = '';
 
-            let filtered = [];
-            if (category === 'synthetics') {
-                filtered = allSymbolsData.filter(s => s.market === 'synthetic_index');
-            } else if (category === 'forex') {
-                filtered = allSymbolsData.filter(s => s.market === 'forex');
-            } else if (category === 'cryptocurrencies') {
-                filtered = allSymbolsData.filter(s => s.market === 'cryptocurrency');
-            } else if (category === 'commodities') {
-                filtered = allSymbolsData.filter(s => s.market === 'commodities');
-            }
+            let filtered = allSymbolsData.filter(s => s.market === category);
 
             if (filtered.length > 0) {
                 filtered.forEach(s => {
@@ -356,12 +373,7 @@
         function changeSymbol() {
             const symbolSelect = document.getElementById('symbol-select');
             currentSymbol = symbolSelect.value;
-            const selectedText = symbolSelect.options[symbolSelect.selectedIndex].text;
-            document.getElementById('active-symbol-label').innerText = `Live Quote (${selectedText}):`;
-            
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ ticks: currentSymbol, subscribe: 1 }));
-            }
+            subscribeTicks(currentSymbol);
         }
 
         function switchTab(tabName) {
@@ -380,7 +392,11 @@
             }
         }
 
-        connectDeriv();
+        window.onload = function() {
+            connectDeriv();
+        };
     </script>
 </body>
 </html>
+
+            
