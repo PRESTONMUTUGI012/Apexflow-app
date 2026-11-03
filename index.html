@@ -159,10 +159,12 @@
         <div class="card">
             <label style="font-size: 0.85rem; color: var(--text-secondary);">Select Market Category:</label>
             <select id="market-category" onchange="filterMarkets()">
+                <option value="all">All Available Deriv Markets</option>
                 <option value="synthetic_index">Synthetic Indices (Volatility, Boom/Crash)</option>
                 <option value="forex">Forex Pairs</option>
                 <option value="cryptocurrency">Cryptocurrencies</option>
                 <option value="commodities">Commodities</option>
+                <option value="basket_index">Basket Indices</option>
             </select>
 
             <label style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.75rem; display: block;">Select Asset / Symbol:</label>
@@ -228,65 +230,38 @@
     </div>
 
     <script>
-        const appId = '34RcdHkJItRtYpPgolA8T'; 
-        let ws = null;
+        const appId = '34RmI4MDorKLlLJPcnfUC'; 
+        let publicWs = null;
+        let authWs = null;
         let allSymbolsData = [];
         let currentSymbol = 'R_100';
-        publicWs = new WebSocket(`wss://api.derivws.com/trading/v1/options/ws/public/?app_id=${appId}`);
-
-
+        let currentSubscriptionId = null;
         let authToken = null;
-        let reconnectInterval = null;
 
-        function connectDeriv() {
+        function initPublicFeed() {
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
 
-            statusText.innerText = 'Connecting...';
-            statusDot.classList.remove('connected');
+            // Using Deriv's standard global endpoint to guarantee connection
+            publicWs = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}`);
 
-            // Stable production WebSocket connection string
-            ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}&l=EN&brand=deriv`);
-
-            ws.onopen = function() {
+            publicWs.onopen = function() {
                 statusDot.classList.add('connected');
                 statusText.innerText = 'Connected Live';
                 statusText.style.color = '#22c55e';
-                
-                if (reconnectInterval) {
-                    clearInterval(reconnectInterval);
-                    reconnectInterval = null;
-                }
 
-                checkOAuthToken();
-                ws.send(JSON.stringify({ active_symbols: "brief", product_type: "basic" }));
+                publicWs.send(JSON.stringify({ active_symbols: "brief", product_type: "basic" }));
                 subscribeTicks(currentSymbol);
+                checkOAuthToken();
             };
 
-            ws.onmessage = function(event) {
+            publicWs.onmessage = function(event) {
                 try {
                     const data = JSON.parse(event.data);
-
-                    if (data.msg_type === 'authorize') {
-                        if (data.error) {
-                            console.warn(data.error.message);
-                        } else {
-                            document.getElementById('login-btn').innerText = 'Logged In';
-                            document.getElementById('account-card').style.display = 'block';
-                            document.getElementById('user-balance').innerText = `${data.authorize.currency} ${data.authorize.balance}`;
-                            ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-                        }
-                    }
-
-                    if (data.msg_type === 'balance' && data.balance) {
-                        document.getElementById('user-balance').innerText = `${data.balance.currency} ${data.balance.balance}`;
-                    }
-
                     if (data.msg_type === 'active_symbols' && data.active_symbols) {
                         allSymbolsData = data.active_symbols;
                         filterMarkets(); 
                     }
-
                     if (data.msg_type === 'tick' && data.tick) {
                         if (data.tick.subscription) {
                             currentSubscriptionId = data.tick.subscription.id;
@@ -294,56 +269,103 @@
                         const quote = Number(data.tick.quote);
                         document.getElementById('price').innerText = isNaN(quote) ? '--.----' : quote.toFixed(2);
                     }
-                } catch (err) {
-                    console.error("Parsing error:", err);
+                } catch (e) {
+                    console.error("Public WS parse error:", e);
                 }
             };
 
-            ws.onclose = function() {
+            publicWs.onclose = function() {
                 statusDot.classList.remove('connected');
                 statusText.innerText = 'Disconnected';
                 statusText.style.color = '#ef4444';
+                setTimeout(initPublicFeed, 5000);
+            };
+        }
 
-                if (!reconnectInterval) {
-                    reconnectInterval = setInterval(function() {
-                        connectDeriv();
-                    }, 4000);
-                }
+        function initAuthSession(token) {
+            authWs = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}`);
+
+            authWs.onopen = function() {
+                authWs.send(JSON.stringify({ authorize: token }));
             };
 
-            ws.onerror = function(err) {
-                console.error("Socket error:", err);
+            authWs.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.msg_type === 'authorize') {
+                        if (data.error) {
+                            alert('Authorization error: ' + data.error.message);
+                        } else {
+                            document.getElementById('login-btn').innerText = 'Logged In';
+                            document.getElementById('account-card').style.display = 'block';
+                            document.getElementById('user-balance').innerText = `${data.authorize.currency} ${data.authorize.balance}`;
+                            authWs.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+                        }
+                    }
+
+                    if (data.msg_type === 'balance' && data.balance) {
+                        document.getElementById('user-balance').innerText = `${data.balance.currency} ${data.balance.balance}`;
+                    }
+
+                    if (data.msg_type === 'proposal') {
+                        if (data.proposal) {
+                            authWs.send(JSON.stringify({ buy: data.proposal.id, price: data.proposal.ask_price }));
+                        }
+                    }
+
+                    if (data.msg_type === 'buy') {
+                        if (data.buy) {
+                            alert(`Trade Placed Successfully! Contract ID: ${data.buy.contract_id}`);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Auth WS parse error:", e);
+                }
             };
         }
 
         function subscribeTicks(symbol) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
+            if (publicWs && publicWs.readyState === WebSocket.OPEN) {
                 if (currentSubscriptionId) {
-                    ws.send(JSON.stringify({ forget: currentSubscriptionId }));
+                    publicWs.send(JSON.stringify({ forget: currentSubscriptionId }));
                     currentSubscriptionId = null;
                 }
-                ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+                publicWs.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
             }
         }
 
         function loginDeriv() {
-            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}`;
+            window.location.href = `https://auth.deriv.com/oauth2/auth?app_id=${appId}`;
         }
 
         function checkOAuthToken() {
             const urlParams = new URLSearchParams(window.location.search);
             authToken = urlParams.get('token1');
-            if (authToken && ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ authorize: authToken }));
+            if (authToken) {
+                initAuthSession(authToken);
             }
         }
 
         function executeTrade(tradeType) {
-            if (!authToken) {
+            if (!authToken || !authWs || authWs.readyState !== WebSocket.OPEN) {
                 alert('Please log in with your Deriv account first to execute trades.');
                 return;
             }
-            alert(`Placing ${tradeType} trade request on ${currentSymbol}...`);
+
+            const stake = document.getElementById('rf-stake').value || "10";
+            const reqType = tradeType === 'CALL' ? 'CALL' : 'PUT';
+
+            authWs.send(JSON.stringify({
+                proposal: 1,
+                amount: parseFloat(stake),
+                basis: 'stake',
+                contract_type: reqType,
+                currency: 'USD',
+                duration: 5,
+                duration_unit: 't',
+                symbol: currentSymbol
+            }));
         }
 
         function filterMarkets() {
@@ -351,13 +373,18 @@
             const symbolSelect = document.getElementById('symbol-select');
             symbolSelect.innerHTML = '';
 
-            let filtered = allSymbolsData.filter(s => s.market === category);
+            let filtered = [];
+            if (category === 'all') {
+                filtered = allSymbolsData;
+            } else {
+                filtered = allSymbolsData.filter(s => s.market === category);
+            }
 
             if (filtered.length > 0) {
                 filtered.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.symbol;
-                    opt.innerText = s.display_name;
+                    opt.innerText = `${s.display_name} (${s.symbol})`;
                     symbolSelect.appendChild(opt);
                 });
                 currentSymbol = filtered[0].symbol;
@@ -375,6 +402,8 @@
         function changeSymbol() {
             const symbolSelect = document.getElementById('symbol-select');
             currentSymbol = symbolSelect.value;
+            const selectedText = symbolSelect.options[symbolSelect.selectedIndex].text;
+            document.getElementById('active-symbol-label').innerText = `Live Quote (${selectedText}):`;
             subscribeTicks(currentSymbol);
         }
 
@@ -394,11 +423,9 @@
             }
         }
 
-        window.onload = function() {
-            connectDeriv();
-        };
+        window.addEventListener('load', function() {
+            initPublicFeed();
+        });
     </script>
 </body>
 </html>
-
-            
