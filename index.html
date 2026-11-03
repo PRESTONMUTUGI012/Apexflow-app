@@ -232,7 +232,8 @@
         let ws = null;
         let allSymbolsData = [];
         let currentSymbol = 'R_100';
-        let currentSubscriptionId = null;
+        publicWs = new WebSocket(`wss://api.derivws.com/trading/v1/options/ws/public/?app_id=${appId}`);
+
         let authToken = null;
         let reconnectInterval = null;
 
