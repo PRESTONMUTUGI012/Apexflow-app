@@ -3,429 +3,326 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apexflow market dollar hunters</title>
-    <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent-color: #3b82f6;
-            --text-color: #f8fafc;
-            --text-secondary: #94a3b8;
-            --success: #22c55e;
-            --danger: #ef4444;
-            --tab-bg: #334155;
+    <title>Apexflow Markets - Dollar Hunters Terminal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0f172a',
+                        cardBg: '#1e293b',
+                        accentBlue: '#2563eb',
+                        accentGreen: '#16a34a'
+                    }
+                }
+            }
         }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        header {
-            background-color: var(--card-bg);
-            padding: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #334155;
-        }
-        h1 {
-            font-size: 1.05rem;
-            margin: 0;
-            color: var(--accent-color);
-            font-weight: 700;
-        }
-        .container {
-            padding: 1rem;
-            max-width: 600px;
-            margin: 0 auto;
-            width: 100%;
-            box-sizing: border-box;
-            flex: 1;
-        }
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        .tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        .tab-btn {
-            flex: 1;
-            background-color: var(--tab-bg);
-            color: var(--text-secondary);
-            border: none;
-            padding: 0.6rem;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: center;
-        }
-        .tab-btn.active {
-            background-color: var(--accent-color);
-            color: white;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        select, input {
-            width: 100%;
-            padding: 0.75rem;
-            border-radius: 8px;
-            border: 1px solid #475569;
-            background-color: #0f172a;
-            color: white;
-            font-size: 1rem;
-            margin-top: 0.5rem;
-            box-sizing: border-box;
-        }
-        button.action-btn {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.25rem;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 0.75rem;
-        }
-        .auth-btn {
-            background-color: var(--success);
-            color: white;
-            border: none;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .price-display {
-            font-size: 2.2rem;
-            font-weight: bold;
-            margin: 0.5rem 0;
-            color: #22c55e;
-        }
-        .status {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: var(--danger);
-            margin-right: 5px;
-        }
-        .status.connected {
-            background-color: var(--success);
-        }
-    </style>
+    </script>
 </head>
-<body>
+<body class="bg-darkBg text-white font-sans antialiased min-h-screen flex flex-col">
 
-    <header>
-        <h1>Apexflow market dollar hunters</h1>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <div>
-                <span id="status-dot" class="status"></span>
-                <span id="status-text" style="font-size: 0.8rem; color: var(--text-secondary);">Connecting...</span>
+    <!-- Top Navigation Bar -->
+    <header class="bg-cardBg border-b border-slate-700 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <span class="text-xl font-bold tracking-wider text-blue-500">APEXFLOW MARKETS</span>
+            <span class="text-xs bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">Dollar Hunters</span>
+        </div>
+        
+        <div class="flex items-center space-x-6">
+            <div id="connection-status" class="flex items-center space-x-2 text-xs">
+                <span class="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" id="status-dot"></span>
+                <span id="status-text" class="text-slate-400">Connecting...</span>
             </div>
-            <button id="login-btn" class="auth-btn" onclick="loginDeriv()">Log In</button>
+
+            <!-- OAuth Login / Account Status Section -->
+            <div id="auth-container" class="flex items-center space-x-3">
+                <button id="login-btn" onclick="redirectToDerivOAuth()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-xs font-semibold transition shadow-md">
+                    Connect Deriv Account
+                </button>
+                <div id="user-info" class="hidden flex items-center space-x-3 text-xs bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                    <div>
+                        <span class="text-slate-400">Acct:</span>
+                        <span id="account-id" class="font-mono text-green-400 font-bold"></span>
+                    </div>
+                    <div class="border-l border-slate-700 pl-3">
+                        <span class="text-slate-400">Bal:</span>
+                        <span id="account-balance" class="font-mono text-slate-200 font-bold">$0.00</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
 
-    <div class="container">
-        <!-- Account Info Card -->
-        <div id="account-card" class="card" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 0.85rem; color: var(--text-secondary);">Account Balance:</span>
-                <span id="user-balance" style="font-weight: bold; color: var(--success); font-size: 1.1rem;">$0.00</span>
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar: Market Categories -->
+        <aside class="w-64 bg-cardBg border-r border-slate-700 p-4 flex flex-col space-y-2">
+            <h3 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2">Market Categories</h3>
+            <button onclick="switchMarket('synthetics', event)" class="market-btn w-full text-left px-4 py-2.5 rounded-lg bg-blue-600 text-white font-medium transition">Synthetic Indices</button>
+            <button onclick="switchMarket('forex', event)" class="market-btn w-full text-left px-4 py-2.5 rounded-lg hover:bg-slate-700 text-slate-300 transition">Forex Majors</button>
+            <button onclick="switchMarket('indices', event)" class="market-btn w-full text-left px-4 py-2.5 rounded-lg hover:bg-slate-700 text-slate-300 transition">Stock Indices</button>
+            <button onclick="switchMarket('crypto', event)" class="market-btn w-full text-left px-4 py-2.5 rounded-lg hover:bg-slate-700 text-slate-300 transition">Cryptocurrencies</button>
+            <button onclick="switchMarket('commodities', event)" class="market-btn w-full text-left px-4 py-2.5 rounded-lg hover:bg-slate-700 text-slate-300 transition">Commodities</button>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-6 overflow-y-auto flex flex-col justify-between">
+            <div>
+                <div class="mb-6 flex justify-between items-end">
+                    <div>
+                        <h1 id="current-category-title" class="text-2xl font-bold">Synthetic Indices</h1>
+                        <p class="text-sm text-slate-400">Track live market feeds and deploy binary trades instantly.</p>
+                    </div>
+                </div>
+
+                <!-- Asset Grid Container -->
+                <div id="assets-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Cards will be populated dynamically -->
+                </div>
             </div>
-        </div>
 
-        <!-- Market & Feed Card -->
-        <div class="card">
-            <label style="font-size: 0.85rem; color: var(--text-secondary);">Select Market Category:</label>
-            <select id="market-category" onchange="filterMarkets()">
-                <option value="all">All Available Deriv Markets</option>
-                <option value="synthetic_index">Synthetic Indices (Volatility, Boom/Crash)</option>
-                <option value="forex">Forex Pairs</option>
-                <option value="cryptocurrency">Cryptocurrencies</option>
-                <option value="commodities">Commodities</option>
-                <option value="basket_index">Basket Indices</option>
-            </select>
-
-            <label style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.75rem; display: block;">Select Asset / Symbol:</label>
-            <select id="symbol-select" onchange="changeSymbol()">
-                <option value="R_100">Volatility 100 Index</option>
-            </select>
-            
-            <div style="margin-top: 1rem;">
-                <span id="active-symbol-label" style="font-size: 0.85rem; color: var(--text-secondary);">Live Quote:</span>
-                <div id="price" class="price-display">--.----</div>
+            <!-- Active Trade Panel / Status Banner -->
+            <div id="trade-panel" class="mt-8 bg-cardBg border border-slate-700 p-4 rounded-xl hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 id="trade-panel-title" class="font-bold text-sm text-blue-400">Active Trade Setup</h3>
+                    <span id="proposal-status" class="text-xs font-mono text-yellow-400">Fetching proposal...</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <div class="text-xs text-slate-300 space-x-4">
+                        <span>Stake: <strong class="text-white">$10 USD</strong></span>
+                        <span>Potential Payout: <strong id="payout-val" class="text-green-450 text-green-400">$0.00</strong></span>
+                    </div>
+                    <div class="space-x-2">
+                        <button onclick="executeBuyContract()" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-lg text-xs font-bold transition shadow">Execute Trade</button>
+                        <button onclick="closeTradePanel()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-xs font-semibold transition">Cancel</button>
+                    </div>
+                </div>
             </div>
-        </div>
-
-        <!-- Contract Type Navigation -->
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('risefall')">Rise / Fall</button>
-            <button class="tab-btn" onclick="switchTab('digits')">Digits</button>
-            <button class="tab-btn" onclick="switchTab('accumulators')">Accumulators</button>
-        </div>
-
-        <!-- Panel 1: Rise / Fall -->
-        <div id="tab-risefall" class="tab-content active card">
-            <h3>Rise / Fall (Ups & Downs)</h3>
-            <label style="font-size: 0.85rem; color: var(--text-secondary);">Stake Amount (USD):</label>
-            <input type="number" id="rf-stake" value="10">
-            <button class="action-btn" onclick="executeTrade('CALL')">Buy Rise (CALL)</button>
-            <button class="action-btn" onclick="executeTrade('PUT')" style="background-color: var(--danger); margin-top: 8px;">Buy Fall (PUT)</button>
-        </div>
-
-        <!-- Panel 2: Digits -->
-        <div id="tab-digits" class="tab-content card">
-            <h3>Digit Trading</h3>
-            <label style="font-size: 0.85rem; color: var(--text-secondary);">Prediction Type:</label>
-            <select id="digit-type">
-                <option value="MATCHES">Matches</option>
-                <option value="DIFFERS">Differs</option>
-                <option value="OVER">Over</option>
-                <option value="UNDER">Under</option>
-            </select>
-
-            <label style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; display: block;">Target Digit (0-9):</label>
-            <select id="digit-target">
-                <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
-                <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
-                <option value="8">8</option><option value="9">9</option>
-            </select>
-            <button class="action-btn" onclick="executeTrade('DIGIT')">Place Digit Trade</button>
-        </div>
-
-        <!-- Panel 3: Accumulators -->
-        <div id="tab-accumulators" class="tab-content card">
-            <h3>Accumulator Options</h3>
-            <label style="font-size: 0.85rem; color: var(--text-secondary);">Growth Rate per Tick:</label>
-            <select id="acc-rate">
-                <option value="1">1% Growth Rate</option>
-                <option value="2">2% Growth Rate</option>
-                <option value="3">3% Growth Rate</option>
-                <option value="4">4% Growth Rate</option>
-                <option value="5">5% Growth Rate</option>
-            </select>
-            <button class="action-btn" onclick="executeTrade('ACCUMULATOR')">Start Accumulator</button>
-        </div>
+        </main>
     </div>
 
+    <!-- Application Script -->
     <script>
-        const appId = '34RmI4MDorKLlLJPcnfUC'; 
-        let publicWs = null;
-        let authWs = null;
-        let allSymbolsData = [];
-        let currentSymbol = 'R_100';
-        let currentSubscriptionId = null;
-        let authToken = null;
+        const appId = '34RmI4MDorKLlLJPcnfUC';
+        const redirectUri = 'https://prestonmutugi012.github.io/Apexflow-app/';
+        const ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}`);
 
-        function initPublicFeed() {
-            const statusDot = document.getElementById('status-dot');
-            const statusText = document.getElementById('status-text');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const assetsGrid = document.getElementById('assets-grid');
 
-            // Using Deriv's standard global endpoint to guarantee connection
-            publicWs = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}`);
+        let activeCategory = 'synthetics';
+        let currentProposalId = null;
+        let isAuthorized = false;
 
-            publicWs.onopen = function() {
-                statusDot.classList.add('connected');
-                statusText.innerText = 'Connected Live';
-                statusText.style.color = '#22c55e';
+        const marketGroups = {
+            synthetics: [
+                { symbol: 'R_10', name: 'Volatility 10 Index' },
+                { symbol: 'R_25', name: 'Volatility 25 Index' },
+                { symbol: 'R_50', name: 'Volatility 50 Index' },
+                { symbol: 'R_75', name: 'Volatility 75 Index' },
+                { symbol: 'R_100', name: 'Volatility 100 Index' },
+                { symbol: 'BOOM1000', name: 'Boom 1000 Index' },
+                { symbol: 'CRASH1000', name: 'Crash 1000 Index' }
+            ],
+            forex: [
+                { symbol: 'frxEURUSD', name: 'EUR/USD' },
+                { symbol: 'frxGBPUSD', name: 'GBP/USD' },
+                { symbol: 'frxUSDJPY', name: 'USD/JPY' },
+                { symbol: 'frxAUDUSD', name: 'AUD/USD' }
+            ],
+            indices: [
+                { symbol: 'WN30', name: 'Wall Street 30' },
+                { symbol: 'USTEC', name: 'US Tech 100' },
+                { symbol: 'JP225', name: 'Japan 225' }
+            ],
+            crypto: [
+                { symbol: 'cryBTCUSD', name: 'BTC/USD' },
+                { symbol: 'cryETHUSD', name: 'ETH/USD' }
+            ],
+            commodities: [
+                { symbol: 'frxXAUUSD', name: 'Spot Gold (XAU/USD)' },
+                { symbol: 'frxXAGUSD', name: 'Spot Silver (XAG/USD)' }
+            ]
+        };
 
-                publicWs.send(JSON.stringify({ active_symbols: "brief", product_type: "basic" }));
-                subscribeTicks(currentSymbol);
-                checkOAuthToken();
-            };
-
-            publicWs.onmessage = function(event) {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.msg_type === 'active_symbols' && data.active_symbols) {
-                        allSymbolsData = data.active_symbols;
-                        filterMarkets(); 
-                    }
-                    if (data.msg_type === 'tick' && data.tick) {
-                        if (data.tick.subscription) {
-                            currentSubscriptionId = data.tick.subscription.id;
-                        }
-                        const quote = Number(data.tick.quote);
-                        document.getElementById('price').innerText = isNaN(quote) ? '--.----' : quote.toFixed(2);
-                    }
-                } catch (e) {
-                    console.error("Public WS parse error:", e);
-                }
-            };
-
-            publicWs.onclose = function() {
-                statusDot.classList.remove('connected');
-                statusText.innerText = 'Disconnected';
-                statusText.style.color = '#ef4444';
-                setTimeout(initPublicFeed, 5000);
-            };
+        // OAuth Login Flow Handlers
+        function redirectToDerivOAuth() {
+            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&l=EN&brand=deriv`;
         }
 
-        function initAuthSession(token) {
-            authWs = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}`);
-
-            authWs.onopen = function() {
-                authWs.send(JSON.stringify({ authorize: token }));
-            };
-
-            authWs.onmessage = function(event) {
-                try {
-                    const data = JSON.parse(event.data);
-
-                    if (data.msg_type === 'authorize') {
-                        if (data.error) {
-                            alert('Authorization error: ' + data.error.message);
-                        } else {
-                            document.getElementById('login-btn').innerText = 'Logged In';
-                            document.getElementById('account-card').style.display = 'block';
-                            document.getElementById('user-balance').innerText = `${data.authorize.currency} ${data.authorize.balance}`;
-                            authWs.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-                        }
-                    }
-
-                    if (data.msg_type === 'balance' && data.balance) {
-                        document.getElementById('user-balance').innerText = `${data.balance.currency} ${data.balance.balance}`;
-                    }
-
-                    if (data.msg_type === 'proposal') {
-                        if (data.proposal) {
-                            authWs.send(JSON.stringify({ buy: data.proposal.id, price: data.proposal.ask_price }));
-                        }
-                    }
-
-                    if (data.msg_type === 'buy') {
-                        if (data.buy) {
-                            alert(`Trade Placed Successfully! Contract ID: ${data.buy.contract_id}`);
-                        }
-                    }
-                } catch (e) {
-                    console.error("Auth WS parse error:", e);
-                }
-            };
-        }
-
-        function subscribeTicks(symbol) {
-            if (publicWs && publicWs.readyState === WebSocket.OPEN) {
-                if (currentSubscriptionId) {
-                    publicWs.send(JSON.stringify({ forget: currentSubscriptionId }));
-                    currentSubscriptionId = null;
-                }
-                publicWs.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-            }
-        }
-
-        function loginDeriv() {
-            window.location.href = `https://auth.deriv.com/oauth2/auth?app_id=${appId}`;
-        }
-
-        function checkOAuthToken() {
+        window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
-            authToken = urlParams.get('token1');
-            if (authToken) {
-                initAuthSession(authToken);
+            const token1 = urlParams.get('token1');
+            const acct1 = urlParams.get('acct1');
+
+            if (token1 && acct1) {
+                localStorage.setItem('deriv_token', token1);
+                localStorage.setItem('deriv_account', acct1);
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
+
+            const savedToken = localStorage.getItem('deriv_token');
+            const savedAccount = localStorage.getItem('deriv_account');
+
+            if (savedToken && savedAccount) {
+                document.getElementById('login-btn').classList.add('hidden');
+                document.getElementById('user-info').classList.remove('hidden');
+                document.getElementById('account-id').innerText = savedAccount;
+            }
+        });
+
+        // WebSocket Connection Events
+        ws.onopen = function() {
+            statusDot.classList.remove('bg-yellow-500');
+            statusDot.classList.add('bg-green-500');
+            statusText.innerText = 'Connected to Deriv API';
+            
+            loadMarketAssets(activeCategory);
+
+            // Authorize if token exists in storage
+            const savedToken = localStorage.getItem('deriv_token');
+            if (savedToken) {
+                ws.send(JSON.stringify({ authorize: savedToken }));
+            }
+        };
+
+        ws.onclose = function() {
+            statusDot.classList.remove('bg-green-500');
+            statusDot.classList.add('bg-red-500');
+            statusText.innerText = 'Connection Disconnected';
+        };
+
+        function switchMarket(category, event) {
+            activeCategory = category;
+            document.getElementById('current-category-title').innerText = category.charAt(0).toUpperCase() + category.slice(1) + ' Markets';
+            
+            document.querySelectorAll('.market-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('hover:bg-slate-700', 'text-slate-300');
+            });
+            event.target.classList.add('bg-blue-600', 'text-white');
+            event.target.classList.remove('hover:bg-slate-700', 'text-slate-300');
+
+            loadMarketAssets(category);
         }
 
-        function executeTrade(tradeType) {
-            if (!authToken || !authWs || authWs.readyState !== WebSocket.OPEN) {
-                alert('Please log in with your Deriv account first to execute trades.');
+        function loadMarketAssets(category) {
+            assetsGrid.innerHTML = '';
+            const assets = marketGroups[category] || [];
+
+            assets.forEach(asset => {
+                const card = document.createElement('div');
+                card.className = 'bg-cardBg border border-slate-700 p-5 rounded-xl shadow-md flex flex-col justify-between';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-base text-slate-100">${asset.name}</h4>
+                            <span class="text-xs font-mono text-slate-400">${asset.symbol}</span>
+                        </div>
+                        <div class="my-4">
+                            <span id="price-${asset.symbol}" class="text-2xl font-mono font-semibold tracking-tight text-slate-100">Connecting...</span>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2 mt-4">
+                        <button onclick="prepareTrade('${asset.symbol}', '${asset.name}', 'CALL')" class="flex-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 py-2 rounded-lg text-xs font-semibold transition">Rise (Call)</button>
+                        <button onclick="prepareTrade('${asset.symbol}', '${asset.name}', 'PUT')" class="flex-1 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 py-2 rounded-lg text-xs font-semibold transition">Fall (Put)</button>
+                    </div>
+                `;
+                assetsGrid.appendChild(card);
+                
+                // Subscribe to ticks
+                ws.send(JSON.stringify({ ticks: asset.symbol }));
+            });
+        }
+
+        function prepareTrade(symbol, name, contractType) {
+            if (!localStorage.getItem('deriv_token')) {
+                alert('Please connect your Deriv account first using the top right button.');
                 return;
             }
 
-            const stake = document.getElementById('rf-stake').value || "10";
-            const reqType = tradeType === 'CALL' ? 'CALL' : 'PUT';
+            document.getElementById('trade-panel').classList.remove('hidden');
+            document.getElementById('trade-panel-title').innerText = `Trade Setup: ${name} (${contractType === 'CALL' ? 'Rise' : 'Fall'})`;
+            document.getElementById('proposal-status').innerText = 'Requesting quote...';
 
-            authWs.send(JSON.stringify({
+            // Request contract proposal (5 ticks duration, $10 stake)
+            ws.send(JSON.stringify({
                 proposal: 1,
-                amount: parseFloat(stake),
+                amount: 10,
                 basis: 'stake',
-                contract_type: reqType,
                 currency: 'USD',
+                symbol: symbol,
+                contract_type: contractType,
                 duration: 5,
-                duration_unit: 't',
-                symbol: currentSymbol
+                duration_unit: 't'
             }));
         }
 
-        function filterMarkets() {
-            const category = document.getElementById('market-category').value;
-            const symbolSelect = document.getElementById('symbol-select');
-            symbolSelect.innerHTML = '';
-
-            let filtered = [];
-            if (category === 'all') {
-                filtered = allSymbolsData;
-            } else {
-                filtered = allSymbolsData.filter(s => s.market === category);
-            }
-
-            if (filtered.length > 0) {
-                filtered.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s.symbol;
-                    opt.innerText = `${s.display_name} (${s.symbol})`;
-                    symbolSelect.appendChild(opt);
-                });
-                currentSymbol = filtered[0].symbol;
-            } else {
-                const opt = document.createElement('option');
-                opt.value = 'R_100';
-                opt.innerText = 'Volatility 100 Index';
-                symbolSelect.appendChild(opt);
-                currentSymbol = 'R_100';
-            }
-
-            changeSymbol();
+        function closeTradePanel() {
+            document.getElementById('trade-panel').classList.add('hidden');
+            currentProposalId = null;
         }
 
-        function changeSymbol() {
-            const symbolSelect = document.getElementById('symbol-select');
-            currentSymbol = symbolSelect.value;
-            const selectedText = symbolSelect.options[symbolSelect.selectedIndex].text;
-            document.getElementById('active-symbol-label').innerText = `Live Quote (${selectedText}):`;
-            subscribeTicks(currentSymbol);
-        }
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-            if (tabName === 'risefall') {
-                document.querySelectorAll('.tab-btn')[0].classList.add('active');
-                document.getElementById('tab-risefall').classList.add('active');
-            } else if (tabName === 'digits') {
-                document.querySelectorAll('.tab-btn')[1].classList.add('active');
-                document.getElementById('tab-digits').classList.add('active');
-            } else if (tabName === 'accumulators') {
-                document.querySelectorAll('.tab-btn')[2].classList.add('active');
-                document.getElementById('tab-accumulators').classList.add('active');
+        function executeBuyContract() {
+            if (!currentProposalId) {
+                alert('No active trade proposal selected.');
+                return;
             }
+
+            ws.send(JSON.stringify({
+                buy: currentProposalId,
+                price: 10
+            }));
         }
 
-        window.addEventListener('load', function() {
-            initPublicFeed();
-        });
+        // Handle incoming WebSocket responses
+        ws.onmessage = function(msg) {
+            const data = JSON.parse(msg.data);
+            
+            if (data.msg_type === 'tick') {
+                const tick = data.tick;
+                const priceElement = document.getElementById(`price-${tick.symbol}`);
+                if (priceElement) {
+                    priceElement.innerText = tick.quote.toFixed(tick.pip || 2);
+                }
+            }
+
+            if (data.msg_type === 'authorize') {
+                if (!data.error) {
+                    isAuthorized = true;
+                    document.getElementById('account-balance').innerText = `$${parseFloat(data.authorize.balance).toFixed(2)}`;
+                } else {
+                    console.error('Authorization failed:', data.error.message);
+                }
+            }
+
+            if (data.msg_type === 'proposal') {
+                if (data.error) {
+                    document.getElementById('proposal-status').innerText = `Error: ${data.error.message}`;
+                    currentProposalId = null;
+                    return;
+                }
+                currentProposalId = data.proposal.id;
+                document.getElementById('proposal-status').innerText = 'Ready to execute';
+                document.getElementById('payout-val').innerText = `$${data.proposal.payout.toFixed(2)}`;
+            }
+
+            if (data.msg_type === 'buy') {
+                if (data.error) {
+                    alert(`Trade execution failed: ${data.error.message}`);
+                    return;
+                }
+                alert(`Trade Successful! Contract ID: ${data.buy.contract_id}`);
+                closeTradePanel();
+                
+                // Refresh balance after trade
+                const savedToken = localStorage.getItem('deriv_token');
+                if (savedToken) ws.send(JSON.stringify({ authorize: savedToken }));
+            }
+        };
     </script>
 </body>
 </html>
+
